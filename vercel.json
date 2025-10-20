@@ -1,18 +1,15 @@
 {
   "version": 2,
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist/public",
+  "installCommand": "pnpm install",
+  "framework": "vite",
   "builds": [
     {
       "src": "server/_core/index.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["dist/**"]
-      }
-    },
-    {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist/public"
+        "includeFiles": ["dist/**", "server/**", "shared/**"]
       }
     }
   ],
@@ -23,7 +20,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/client/$1"
+      "dest": "/dist/public/$1"
     }
   ],
   "env": {
@@ -33,5 +30,6 @@
     "server/_core/index.ts": {
       "maxDuration": 30
     }
-  }
+  },
+  "regions": ["iad1"]
 }
