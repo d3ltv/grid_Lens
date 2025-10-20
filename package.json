@@ -14,8 +14,7 @@
     "vercel-build": "pnpm build"
   },
   "engines": {
-    "node": ">=20.19.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=20.19.0"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
