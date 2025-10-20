@@ -12,8 +12,8 @@ function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path="/" component={LocalHome} />
-      <Route path="/web" component={Home} />
+      <Route path="/" component={Home} />
+      <Route path="/local" component={LocalHome} />
       <Route path="/project/:id" component={ProjectDetail} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
