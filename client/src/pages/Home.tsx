@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
-import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Plus, Film, LogOut, Search, Filter, Clock, CheckCircle2, AlertCircle, TrendingUp } from "lucide-react";
+import { useLocalProjects } from "../hooks/useLocalProjects";
 
 export default function HomeImproved() {
   // Désactiver l'authentification pour usage interne
@@ -30,12 +30,18 @@ export default function HomeImproved() {
     diffusionFormat: "",
   });
 
-  const { data: projects = [], isLoading: projectsLoading } = trpc.project.list.useQuery(undefined, {
-    enabled: isAuthenticated,
-  });
+  const { 
+    projects = [], 
+    loading: projectsLoading, 
+    createProject, 
+    error 
+  } = useLocalProjects();
 
-  const createProjectMutation = trpc.project.create.useMutation({
-    onSuccess: (newProject) => {
+  const handleCreateProject = async () => {
+    if (!formData.title.trim()) return;
+    
+    try {
+      const newProject = await createProject(formData);
       setFormData({
         title: "",
         clientName: "",
@@ -46,16 +52,11 @@ export default function HomeImproved() {
       });
       setIsDialogOpen(false);
       setLocation(`/project/${newProject.id}`);
-    },
-  });
-
-  const handleCreateProject = async () => {
-    if (!formData.title.trim()) {
-      alert("Le titre du projet est requis");
-      return;
+    } catch (error) {
+      console.error('Erreur lors de la création du projet:', error);
     }
-    createProjectMutation.mutate(formData);
   };
+
 
   // Filtrer et chercher les projets
   const filteredProjects = projects.filter((project) => {
@@ -227,15 +228,25 @@ export default function HomeImproved() {
                   </Button>
                   <Button
                     onClick={handleCreateProject}
-                    disabled={createProjectMutation.isPending}
+                    disabled={projectsLoading}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
-                    {createProjectMutation.isPending ? "Création..." : "Créer le projet"}
+                    {projectsLoading ? "Création..." : "Créer le projet"}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
+
+          {/* Message d'erreur */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                <p className="text-red-700">{error}</p>
+              </div>
+            </div>
+          )}
 
           {/* Stats Cards - Bento Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
