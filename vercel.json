@@ -3,13 +3,20 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "dist/public",
   "installCommand": "pnpm install",
-  "framework": "vite",
+  "framework": null,
   "builds": [
     {
       "src": "server/_core/index.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["dist/**", "server/**", "shared/**"]
+        "includeFiles": ["dist/**", "server/**", "shared/**", "drizzle/**"]
+      }
+    },
+    {
+      "src": "client/index.html",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
       }
     }
   ],
