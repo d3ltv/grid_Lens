@@ -2,7 +2,7 @@
 FROM node:20-alpine
 
 # Installer pnpm
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.4.1
 
 # Définir le répertoire de travail
 WORKDIR /app
@@ -11,13 +11,16 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Installer les dépendances
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --prod=false
 
 # Copier le code source
 COPY . .
 
 # Construire l'application
 RUN pnpm build
+
+# Nettoyer les dépendances de développement
+RUN pnpm prune --prod
 
 # Exposer le port
 EXPOSE 3000
