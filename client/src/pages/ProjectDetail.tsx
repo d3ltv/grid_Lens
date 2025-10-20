@@ -4,9 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
+import { useLocalProjects } from "../hooks/useLocalProjects";
 import { 
   ArrowLeft, Download, FileText, Palette, Video, Music2, 
   Scroll, Clapperboard, MapPin, Users, Camera, UsersRound,
@@ -91,31 +91,65 @@ export default function ProjectDetail({ params }: ProjectDetailProps) {
     }
   }, []);
 
-  const { data: project, isLoading } = trpc.project.get.useQuery(
-    { id: params.id },
-    { enabled: !!params.id }
-  );
+  const { getProject, updateProject, deleteProject, loading: projectsLoading } = useLocalProjects();
+  const [project, setProject] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const updateProjectMutation = trpc.project.update.useMutation({
-    onSuccess: () => {
+  // Charger le projet
+  useEffect(() => {
+    const loadProject = async () => {
+      if (!params.id) return;
+      
+      try {
+        setIsLoading(true);
+        const projectData = await getProject(params.id);
+        setProject(projectData);
+      } catch (error) {
+        console.error('Erreur lors du chargement du projet:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProject();
+  }, [params.id, getProject]);
+
+  const handleUpdateProject = async (data: any) => {
+    if (!project) return;
+    
+    try {
+      await updateProject(project.id, data);
       setIsEditing(false);
-    },
-  });
+      // Recharger le projet
+      const updatedProject = await getProject(project.id);
+      setProject(updatedProject);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour:', error);
+    }
+  };
 
-  const deleteProjectMutation = trpc.project.delete.useMutation({
-    onSuccess: () => {
+  const handleDeleteProject = async () => {
+    if (!project) return;
+    
+    try {
+      await deleteProject(project.id);
       setLocation("/");
-    },
-  });
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+    }
+  };
 
-  const generatePDFMutation = trpc.pdf.generateProjectPDF.useMutation({
-    onSuccess: (data) => {
-      const link = document.createElement("a");
-      link.href = data.url;
-      link.download = data.fileName;
-      link.click();
-    },
-  });
+  const handleGeneratePDF = () => {
+    // Pour l'instant, on génère un simple export JSON
+    const data = JSON.stringify(project, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${project?.title || 'projet'}_export.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleEditClick = () => {
     if (project) {
@@ -132,15 +166,12 @@ export default function ProjectDetail({ params }: ProjectDetailProps) {
   };
 
   const handleSaveEdit = () => {
-    updateProjectMutation.mutate({
-      id: params.id,
-      ...editData,
-    });
+    handleUpdateProject(editData);
   };
 
   const handleDelete = () => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ? Cette action est irréversible.")) {
-      deleteProjectMutation.mutate({ id: params.id });
+      handleDeleteProject();
     }
   };
 
@@ -252,12 +283,12 @@ export default function ProjectDetail({ params }: ProjectDetailProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => generatePDFMutation.mutate({ projectId: params.id })}
-                disabled={generatePDFMutation.isPending}
+                onClick={handleGeneratePDF}
+                disabled={projectsLoading}
                 className="border-slate-300 hover:bg-slate-100 hidden sm:flex"
               >
                 <Download className="w-4 h-4 mr-2" />
-                {generatePDFMutation.isPending ? "..." : "PDF"}
+                {projectsLoading ? "..." : "Export"}
               </Button>
             </div>
           </div>
