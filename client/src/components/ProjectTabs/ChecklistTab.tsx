@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { trpc } from "@/lib/trpc";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { localStorageService } from "@shared/_core/localStorageService";
 import { Plus, Trash2, Edit2, CheckCircle2, Circle, ChevronDown, ChevronRight } from "lucide-react";
 
 interface ChecklistTabProps {
@@ -33,12 +34,34 @@ export default function ChecklistTabImproved({ projectId }: ChecklistTabProps) {
   });
 
   const utils = trpc.useUtils();
+  const trpcAny = trpc as any;
+  const utilsAny = utils as any;
 
-  const { data: checklistItems = [] } = trpc.checklistItem.list.useQuery({ projectId });
+  const { data: trpcChecklistItems = [] } = trpcAny.checklistItem.list.useQuery({ projectId });
 
-  const createChecklistItemMutation = trpc.checklistItem.create.useMutation({
-    onSuccess: () => {
-      utils.checklistItem.list.invalidate({ projectId });
+  const [checklistItems, setChecklistItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (trpcChecklistItems && trpcChecklistItems.length > 0) {
+      setChecklistItems(trpcChecklistItems);
+      return;
+    }
+
+    (async () => {
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        setChecklistItems(proj?.checklist || []);
+      } catch (err) {
+        console.warn('Erreur chargement checklist locales', err);
+        setChecklistItems([]);
+      }
+    })();
+  }, [trpcChecklistItems, projectId]);
+
+  const createChecklistItemMutation = trpcAny.checklistItem.create.useMutation({
+    onSuccess: async (created: any) => {
+      utilsAny.checklistItem.list.invalidate({ projectId });
+      setChecklistItems(prev => [...prev, created]);
       setFormData({
         itemName: "",
         category: "",
@@ -46,20 +69,82 @@ export default function ChecklistTabImproved({ projectId }: ChecklistTabProps) {
         isChecked: false,
       });
       setIsAdding(false);
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        const existing = proj?.checklist || [];
+        await localStorageService.updateProject(projectId, { checklist: [...existing, created] });
+      } catch (err) {
+        console.warn('Erreur sync local après création checklist item', err);
+      }
     },
+  onError: async (err: any, variables: any) => {
+      console.warn('trpc create checklist failed, falling back to local', err);
+      try {
+        const newItem = { id: Date.now().toString(), ...(variables as any) };
+        setChecklistItems(prev => [...prev, newItem]);
+        await localStorageService.updateProject(projectId, { checklist: [...checklistItems, newItem] });
+        setFormData({ itemName: "", category: "", notes: "", isChecked: false });
+        setIsAdding(false);
+      } catch (e) {
+        console.error('Fallback create checklist failed', e);
+      }
+    }
   });
 
-  const updateChecklistItemMutation = trpc.checklistItem.update.useMutation({
-    onSuccess: () => {
-      utils.checklistItem.list.invalidate({ projectId });
+  const updateChecklistItemMutation = trpcAny.checklistItem.update.useMutation({
+    onSuccess: async (updated: any) => {
+      utilsAny.checklistItem.list.invalidate({ projectId });
+      if (!updated || !updated.id) return;
+      setChecklistItems(prev => prev.map(i => i.id === updated.id ? updated : i));
       setEditingId(null);
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        const existing = proj?.checklist || [];
+        const next = existing.map((i: any) => i.id === updated.id ? updated : i);
+        await localStorageService.updateProject(projectId, { checklist: next });
+      } catch (err) {
+        console.warn('Erreur sync local après update checklist item', err);
+      }
     },
+  onError: async (err: any, variables: any) => {
+      console.warn('trpc update checklist failed, falling back to local', err);
+      try {
+        const updatedLocal = { id: (variables as any).id, ...(variables as any) } as any;
+        setChecklistItems(prev => prev.map(i => i.id === updatedLocal.id ? updatedLocal : i));
+        await localStorageService.updateProject(projectId, { checklist: checklistItems.map(i => i.id === updatedLocal.id ? updatedLocal : i) });
+        setEditingId(null);
+      } catch (e) {
+        console.error('Fallback update checklist failed', e);
+      }
+    }
   });
 
-  const deleteChecklistItemMutation = trpc.checklistItem.delete.useMutation({
-    onSuccess: () => {
-      utils.checklistItem.list.invalidate({ projectId });
+  const deleteChecklistItemMutation = trpcAny.checklistItem.delete.useMutation({
+    onSuccess: async (deleted: any, variables: any) => {
+      const deletedId = (deleted as any)?.id ?? (variables as any)?.id;
+      if (!deletedId) return;
+      utilsAny.checklistItem.list.invalidate({ projectId });
+      setChecklistItems(prev => prev.filter(i => i.id !== deletedId));
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        const existing = proj?.checklist || [];
+        const next = existing.filter((i: any) => i.id !== deletedId);
+        await localStorageService.updateProject(projectId, { checklist: next });
+      } catch (err) {
+        console.warn('Erreur sync local après suppression checklist item', err);
+      }
     },
+  onError: async (err: any, variables: any) => {
+      console.warn('trpc delete checklist failed, fallback local', err);
+      try {
+        const id = (variables as any)?.id;
+        if (!id) return;
+        setChecklistItems(prev => prev.filter(i => i.id !== id));
+        await localStorageService.updateProject(projectId, { checklist: checklistItems.filter(i => i.id !== id) });
+      } catch (e) {
+        console.error('Fallback delete checklist failed', e);
+      }
+    }
   });
 
   // Grouper les éléments par catégorie

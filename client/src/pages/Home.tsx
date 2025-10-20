@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Plus, Film, LogOut, Search, Filter, Clock, CheckCircle2, AlertCircle, TrendingUp } from "lucide-react";
+import { Plus, Film, LogOut, Search, Filter, Clock, CheckCircle2, AlertCircle, TrendingUp, Download } from "lucide-react";
 import { useLocalProjects } from "../hooks/useLocalProjects";
 import { FileStorageManager } from "../components/FileStorageManager";
 

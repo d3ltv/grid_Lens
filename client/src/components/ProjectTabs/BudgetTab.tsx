@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { Plus, Trash2, Edit2, DollarSign } from "lucide-react";
+import { useBudgetItems, BudgetItem } from "@/hooks/useBudgetItems";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface BudgetTabProps {
   projectId: string;
@@ -20,14 +22,43 @@ export default function BudgetTab({ projectId }: BudgetTabProps) {
     notes: "",
   });
 
+  const { budgetItems, addBudgetItem, updateBudgetItem, deleteBudgetItem } = useBudgetItems(projectId);
+
   const handleAddBudgetItem = () => {
     if (!formData.category.trim() || !formData.amount.trim()) {
       alert("La catégorie et le montant sont requis");
       return;
     }
+
+    if (editingId) {
+      updateBudgetItem(editingId, formData);
+    } else {
+      addBudgetItem(formData);
+    }
+
     setIsAdding(false);
+    setEditingId(null);
     setFormData({ category: "", amount: "", notes: "" });
   };
+
+  const handleEdit = (item: BudgetItem) => {
+    setEditingId(item.id);
+    setFormData({
+      category: item.category,
+      amount: item.amount,
+      notes: item.notes,
+    });
+    setIsAdding(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer cette ligne budgétaire ?")) {
+      deleteBudgetItem(id);
+    }
+  };
+
+  // Calculer le total du budget
+  const total = budgetItems.reduce((sum, item) => sum + parseFloat(item.amount || "0"), 0);
 
   return (
     <div className="space-y-6">
@@ -108,14 +139,63 @@ export default function BudgetTab({ projectId }: BudgetTabProps) {
         </Card>
       )}
 
-      <Card className="border-dashed">
-        <CardContent className="pt-12 pb-12 text-center">
-          <DollarSign className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500 text-sm italic">
-            Aucune ligne budgétaire pour le moment
-          </p>
-        </CardContent>
-      </Card>
+      {budgetItems.length > 0 ? (
+        <div>
+          <Card className="overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Catégorie</TableHead>
+                  <TableHead>Montant</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {budgetItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.category}</TableCell>
+                    <TableCell>{parseFloat(item.amount).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}</TableCell>
+                    <TableCell className="max-w-md truncate">{item.notes}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow>
+                  <TableCell colSpan={4} className="text-right font-bold">
+                    Total: {total.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Card>
+        </div>
+      ) : (
+        <Card className="border-dashed">
+          <CardContent className="pt-12 pb-12 text-center">
+            <DollarSign className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500 text-sm italic">
+              Aucune ligne budgétaire pour le moment
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

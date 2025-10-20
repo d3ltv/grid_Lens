@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { localStorageService } from "@shared/_core/localStorageService";
 import { Plus, Trash2, Edit2 } from "lucide-react";
 
 interface ScenesTabProps {
@@ -24,11 +25,42 @@ export default function ScenesTab({ projectId }: ScenesTabProps) {
     duration: "",
   });
 
-  const { data: scenes = [] } = trpc.scene.list.useQuery({ projectId });
+  const { data: trpcScenes = [], isError: trpcError } = trpc.scene.list.useQuery({ projectId });
+
+  // Local scenes state - we keep this in sync with trpc when possible,
+  // and fallback to localStorage if trpc isn't available or for redundancy.
+  const [scenes, setScenes] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Prefer trpc data when available
+    if (trpcScenes && trpcScenes.length > 0) {
+      setScenes(trpcScenes);
+      return;
+    }
+
+    // Otherwise load from local storage
+    (async () => {
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        setScenes(proj?.scenes || []);
+      } catch (err) {
+        console.warn('Impossible de charger les scènes depuis le stockage local', err);
+        setScenes([]);
+      }
+    })();
+  }, [trpcScenes, projectId]);
+
   const createSceneMutation = trpc.scene.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async (created) => {
+      // update UI
+      setScenes(prev => {
+        const next = [...prev, created];
+        return next;
+      });
+
+      // reset form
       setFormData({
-        sceneNumber: Math.max(...scenes.map(s => s.sceneNumber), 0) + 1,
+        sceneNumber: Math.max(...(trpcScenes || scenes).map((s: any) => s.sceneNumber), 0) + 1,
         title: "",
         description: "",
         actions: "",
@@ -37,16 +69,97 @@ export default function ScenesTab({ projectId }: ScenesTabProps) {
         duration: "",
       });
       setIsAdding(false);
+
+      // persist to local storage as fallback/sync
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        const existing = proj?.scenes || [];
+        await localStorageService.updateProject(projectId, { scenes: [...existing, created] });
+      } catch (err) {
+        console.warn('Erreur sync local après création de scène', err);
+      }
     },
+    onError: async (err, variables) => {
+      // If trpc fails, fallback to local-only create
+      console.warn('trpc create failed, falling back to local', err);
+      try {
+        const newItem = { id: Date.now().toString(), ...variables } as any;
+        setScenes(prev => [...prev, newItem]);
+        await localStorageService.updateProject(projectId, { scenes: [...scenes, newItem] });
+        setFormData({
+          sceneNumber: Math.max(...scenes.map(s => s.sceneNumber), 0) + 1,
+          title: "",
+          description: "",
+          actions: "",
+          dialogue: "",
+          voiceOver: "",
+          duration: "",
+        });
+        setIsAdding(false);
+      } catch (e) {
+        console.error('Fallback create failed', e);
+      }
+    }
   });
 
   const updateSceneMutation = trpc.scene.update.useMutation({
-    onSuccess: () => {
+    onSuccess: async (updated) => {
+      if (!updated || !updated.id) {
+        setEditingId(null);
+        return;
+      }
+
+      setScenes(prev => prev.map(s => s.id === updated.id ? updated : s));
       setEditingId(null);
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        const existing = proj?.scenes || [];
+        const next = existing.map((s: any) => s.id === updated.id ? updated : s);
+        await localStorageService.updateProject(projectId, { scenes: next });
+      } catch (err) {
+        console.warn('Erreur sync local après update de scène', err);
+      }
     },
+    onError: async (err, variables) => {
+      console.warn('trpc update failed, falling back to local', err);
+      try {
+        const updatedLocal = { id: (variables as any).id, ...(variables as any) } as any;
+        setScenes(prev => prev.map(s => s.id === updatedLocal.id ? updatedLocal : s));
+        await localStorageService.updateProject(projectId, { scenes: scenes.map(s => s.id === updatedLocal.id ? updatedLocal : s) });
+        setEditingId(null);
+      } catch (e) {
+        console.error('Fallback update failed', e);
+      }
+    }
   });
 
-  const deleteSceneMutation = trpc.scene.delete.useMutation();
+  const deleteSceneMutation = trpc.scene.delete.useMutation({
+    onSuccess: async (deleted, variables) => {
+  const deletedAny = deleted as any;
+  const deletedId = deletedAny?.id ?? (variables as any)?.id;
+      if (!deletedId) return;
+      setScenes(prev => prev.filter(s => s.id !== deletedId));
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        const existing = proj?.scenes || [];
+        const next = existing.filter((s: any) => s.id !== deletedId);
+        await localStorageService.updateProject(projectId, { scenes: next });
+      } catch (err) {
+        console.warn('Erreur sync local après suppression de scène', err);
+      }
+    },
+    onError: async (err, variables) => {
+      console.warn('trpc delete failed, falling back to local', err);
+      try {
+        const id = (variables as any)?.id;
+        if (!id) return;
+        setScenes(prev => prev.filter(s => s.id !== id));
+        await localStorageService.updateProject(projectId, { scenes: scenes.filter(s => s.id !== id) });
+      } catch (e) {
+        console.error('Fallback delete failed', e);
+      }
+    }
+  });
 
   const handleAddScene = () => {
     createSceneMutation.mutate({
@@ -173,7 +286,7 @@ export default function ScenesTab({ projectId }: ScenesTabProps) {
       )}
 
       <div className="space-y-4">
-        {scenes.map((scene) => (
+  {scenes.map((scene) => (
           <Card key={scene.id}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">

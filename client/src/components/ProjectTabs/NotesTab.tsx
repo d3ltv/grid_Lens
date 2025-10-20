@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { localStorageService } from "@shared/_core/localStorageService";
 import { Plus, Trash2, Edit2 } from "lucide-react";
 
 interface NotesTabProps {
@@ -20,21 +21,107 @@ export default function NotesTab({ projectId }: NotesTabProps) {
     category: "",
   });
 
-  const { data: notes = [] } = trpc.projectNote.list.useQuery({ projectId });
+  const { data: trpcNotes = [] } = trpc.projectNote.list.useQuery({ projectId });
+
+  const [notes, setNotes] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (trpcNotes && trpcNotes.length > 0) {
+      setNotes(trpcNotes);
+      return;
+    }
+
+    (async () => {
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        setNotes(proj?.notes || []);
+      } catch (err) {
+        console.warn('Erreur chargement notes locales', err);
+        setNotes([]);
+      }
+    })();
+  }, [trpcNotes, projectId]);
+
   const createNoteMutation = trpc.projectNote.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async (created) => {
+      setNotes(prev => [...prev, created]);
       setFormData({ title: "", content: "", category: "" });
       setIsAdding(false);
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        const existing = proj?.notes || [];
+        await localStorageService.updateProject(projectId, { notes: [...existing, created] });
+      } catch (err) {
+        console.warn('Erreur sync local après création de note', err);
+      }
     },
+    onError: async (err, variables) => {
+      console.warn('trpc create note failed, falling back to local', err);
+      try {
+        const newItem = { id: Date.now().toString(), ...(variables as any) };
+        setNotes(prev => [...prev, newItem]);
+        await localStorageService.updateProject(projectId, { notes: [...notes, newItem] });
+        setFormData({ title: "", content: "", category: "" });
+        setIsAdding(false);
+      } catch (e) {
+        console.error('Fallback create note failed', e);
+      }
+    }
   });
 
   const updateNoteMutation = trpc.projectNote.update.useMutation({
-    onSuccess: () => {
+    onSuccess: async (updated) => {
+      if (!updated || !updated.id) return;
+      setNotes(prev => prev.map(n => n.id === updated.id ? updated : n));
       setEditingId(null);
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        const existing = proj?.notes || [];
+        const next = existing.map((n: any) => n.id === updated.id ? updated : n);
+        await localStorageService.updateProject(projectId, { notes: next });
+      } catch (err) {
+        console.warn('Erreur sync local après update note', err);
+      }
     },
+    onError: async (err, variables) => {
+      console.warn('trpc update note failed, falling back to local', err);
+      try {
+        const updatedLocal = { id: (variables as any).id, ...(variables as any) } as any;
+        setNotes(prev => prev.map(n => n.id === updatedLocal.id ? updatedLocal : n));
+        await localStorageService.updateProject(projectId, { notes: notes.map(n => n.id === updatedLocal.id ? updatedLocal : n) });
+        setEditingId(null);
+      } catch (e) {
+        console.error('Fallback update note failed', e);
+      }
+    }
   });
 
-  const deleteNoteMutation = trpc.projectNote.delete.useMutation();
+  const deleteNoteMutation = trpc.projectNote.delete.useMutation({
+    onSuccess: async (deleted, variables) => {
+      const deletedId = (deleted as any)?.id ?? (variables as any)?.id;
+      if (!deletedId) return;
+      setNotes(prev => prev.filter(n => n.id !== deletedId));
+      try {
+        const proj = await localStorageService.getProject(projectId);
+        const existing = proj?.notes || [];
+        const next = existing.filter((n: any) => n.id !== deletedId);
+        await localStorageService.updateProject(projectId, { notes: next });
+      } catch (err) {
+        console.warn('Erreur sync local après suppression note', err);
+      }
+    },
+    onError: async (err, variables) => {
+      console.warn('trpc delete note failed, fallback local', err);
+      try {
+        const id = (variables as any)?.id;
+        if (!id) return;
+        setNotes(prev => prev.filter(n => n.id !== id));
+        await localStorageService.updateProject(projectId, { notes: notes.filter(n => n.id !== id) });
+      } catch (e) {
+        console.error('Fallback delete note failed', e);
+      }
+    }
+  });
 
   const handleAddNote = () => {
     if (!formData.content.trim()) {
