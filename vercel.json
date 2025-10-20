@@ -1,8 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "pnpm vercel-build",
+  "buildCommand": "pnpm build",
   "outputDirectory": "dist/public",
-  "installCommand": "pnpm install",
   "routes": [
     {
       "src": "/api/(.*)",
