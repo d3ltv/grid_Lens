@@ -33,10 +33,5 @@
   "env": {
     "NODE_ENV": "production"
   },
-  "functions": {
-    "server/_core/index.ts": {
-      "maxDuration": 30
-    }
-  },
   "regions": ["iad1"]
 }
