@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1760960267828,
+      "tag": "0000_confused_nightcrawler",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1760960300102,
+      "tag": "0001_legal_agent_brand",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+Text file: pasted_content.txt
+Latest content with line numbers:
+1	Text file: README-DEV.md
+2	Latest content with line numbers:
+3	1	# README-DEV.md - Outil de Pré-Production Vidéo
+4	2	
+5	3	## Introduction
+6	4	
+7	5	Ce document est destiné aux développeurs souhaitant contribuer ou comprendre l'architecture technique de l'outil de pré-production vidéo. Il fournit un aperçu des technologies utilisées, des instructions de mise en place de l'environnement de développement, et des directives générales.
+8	6	
+9	7	## Technologies Utilisées
+10	8	
+11	9	L'application est une solution full-stack moderne, développée avec les technologies suivantes :
+12	10	
+13	11	### Frontend
+14	12	
+15	13	*   **React:** Bibliothèque JavaScript pour la construction d'interfaces utilisateur (UI).
+16	14	*   **Vite:** Outil de build rapide pour le développement frontend, offrant un rechargement à chaud (HMR) performant.
+17	15	*   **TypeScript:** Langage de programmation qui ajoute le typage statique à JavaScript, améliorant la robustesse et la maintenabilité du code.
+18	16	*   **Tailwind CSS:** Framework CSS utilitaire pour un stylisme rapide et personnalisable, permettant de construire des designs complexes directement dans le balisage HTML.
+19	17	*   **tRPC:** Framework pour construire des API typesafe entre le frontend et le backend. Il permet d'appeler des fonctions backend directement depuis le frontend avec une sécurité de type de bout en bout.
+20	18	*   **React Hook Form & Zod:** Bibliothèques utilisées conjointement pour la gestion des formulaires et la validation des données côté client, garantissant la cohérence et la validité des entrées utilisateur.
+21	19	
+22	20	### Backend
+23	21	
+24	22	*   **Node.js:** Environnement d'exécution JavaScript côté serveur.
+25	23	*   **Express:** Framework web minimaliste et flexible pour Node.js, utilisé pour construire l'API RESTful.
+26	24	*   **TypeScript:** Utilisé également côté backend pour maintenir la cohérence du typage à travers toute l'application.
+27	25	*   **Drizzle ORM:** ORM (Object-Relational Mapper) moderne et typesafe, facilitant l'interaction avec la base de données relationnelle.
+28	26	*   **MySQL:** Système de gestion de base de données relationnelle, utilisé pour le stockage persistant des données du projet.
+29	27	*   **AWS S3:** Service de stockage d'objets pour gérer les fichiers multimédias (images de moodboard, storyboards, etc.).
+30	28	
+31	29	### Outils de Développement
+32	30	
+33	31	*   **pnpm:** Gestionnaire de paquets rapide et efficace, optimisé pour l'utilisation de l'espace disque et la vitesse d'installation.
+34	32	*   **ESBuild:** Bundler JavaScript ultra-rapide, utilisé pour la compilation et le bundling du code.
+35	33	*   **Drizzle Kit:** Outil CLI pour Drizzle ORM, essentiel pour la génération et l'application des migrations de base de données.
+36	34	
+37	35	## Structure du Projet
+38	36	
+39	37	Le projet est organisé en plusieurs répertoires principaux :
+40	38	
+41	39	*   `client/`: Contient le code source de l'application frontend (React, Vite).
+42	40	*   `server/`: Contient le code source de l'API backend (Node.js, Express, tRPC).
+43	41	*   `drizzle/`: Contient les schémas de base de données Drizzle ORM et les fichiers de migration.
+44	42	*   `shared/`: Contient les types TypeScript partagés entre le frontend et le backend, assurant la sécurité de type de bout en bout.
+45	43	*   `public/`: Contient les assets statiques du frontend.
+46	44	
+47	45	## Mise en Place de l'Environnement de Développement
+48	46	
+49	47	Pour démarrer le projet en local, suivez les étapes ci-dessous :
+50	48	
+51	49	1.  **Prérequis :**
+52	50	    *   Node.js (v18 ou supérieur)
+53	51	    *   pnpm
+54	52	    *   Docker (pour la base de données MySQL locale, optionnel mais recommandé)
+55	53	
+56	54	2.  **Cloner le dépôt :**
+57	55	
+58	56	    ```bash
+59	57	    git clone <URL_DU_DEPOT>
+60	58	    cd preprod-tool
+61	59	    ```
+62	60	
+63	61	3.  **Installation des dépendances :**
+64	62	
+65	63	    ```bash
+66	64	    pnpm install
+67	65	    ```
+68	66	
+69	67	4.  **Configuration de la Base de Données :**
+70	68	
+71	69	    *   Créez un fichier `.env` à la racine du projet en vous basant sur `.env.example` (s'il existe, sinon créez-le manuellement).
+72	70	    *   Configurez votre connexion MySQL. Si vous utilisez Docker, vous pouvez lancer une instance MySQL avec :
+73	71	
+74	72	        ```bash
+75	73	        docker run --name some-mysql -e MYSQL_ROOT_PASSWORD=my-secret-pw -p 3306:3306 -d mysql:latest
+76	74	        ```
+77	75	
+78	76	    *   Mettez à jour votre fichier `.env` avec les informations de connexion, par exemple :
+79	77	
+80	78	        ```
+81	79	        DATABASE_URL="mysql://root:my-secret-pw@localhost:3306/preprod_tool"
+82	80	        ```
+83	81	
+84	82	    *   Appliquez les migrations de schéma Drizzle à votre base de données :
+85	83	
+86	84	        ```bash
+87	85	        pnpm run db:push
+88	86	        ```
+89	87	
+90	88	5.  **Configuration AWS S3 (pour le stockage d'images) :**
+91	89	
+92	90	    *   Créez un compte AWS et configurez un bucket S3.
+93	91	    *   Ajoutez les informations d'identification AWS à votre fichier `.env` :
+94	92	
+95	93	        ```
+96	94	        AWS_ACCESS_KEY_ID="YOUR_ACCESS_KEY"
+97	95	        AWS_SECRET_ACCESS_KEY="YOUR_SECRET_KEY"
+98	96	        AWS_REGION="YOUR_REGION"
+99	97	        AWS_BUCKET_NAME="YOUR_BUCKET_NAME"
+100	98	        ```
+101	99	
+102	100	6.  **Lancement de l'application en mode développement :**
+103	101	
+104	102	    ```bash
+105	103	    pnpm run dev
+106	104	    ```
+107	105	
+108	106	    L'application sera accessible via `http://localhost:5000` (ou un port similaire si 5000 est déjà utilisé).
+109	107	
+110	108	## Scripts Utiles
+111	109	
+112	110	Voici quelques scripts `pnpm` utiles définis dans `package.json` :
+113	111	
+114	112	*   `pnpm run dev`: Lance l'application en mode développement (frontend et backend).
+115	113	*   `pnpm run build`: Compile l'application pour la production.
+116	114	*   `pnpm run start`: Lance l'application compilée en production.
+117	115	*   `pnpm run db:push`: Applique les migrations de base de données.
+118	116	*   `pnpm run db:generate`: Génère une nouvelle migration Drizzle.
+119	117	
+120	118	## Contribution
+121	119	
+122	120	*   **Branches :** Utilisez des branches de fonctionnalités pour vos développements (`feature/nom-de-la-feature`).
+123	121	*   **Commits :** Rédigez des messages de commit clairs et concis.
+124	122	*   **Pull Requests :** Soumettez des Pull Requests pour revue avant de fusionner dans `main`.
+125	123	*   **Tests :** Assurez-vous que vos modifications sont couvertes par des tests (si des tests sont implémentés).
+126	124	
+127	125	N'hésitez pas à explorer le code et à poser des questions si vous rencontrez des difficultés. Bon développement !
+128	126	
