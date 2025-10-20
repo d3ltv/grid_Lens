@@ -2,10 +2,17 @@
   "version": 2,
   "buildCommand": "pnpm build",
   "outputDirectory": "dist/public",
+  "installCommand": "pnpm install",
+  "framework": "vite",
+  "functions": {
+    "dist/index.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server/_core/index.ts"
+      "dest": "/dist/index.js"
     },
     {
       "handle": "filesystem"
