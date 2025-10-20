@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Plus, Film, LogOut, Search, Filter, Clock, CheckCircle2, AlertCircle, TrendingUp } from "lucide-react";
 import { useLocalProjects } from "../hooks/useLocalProjects";
+import { FileStorageManager } from "../components/FileStorageManager";
 
 export default function HomeImproved() {
   // Désactiver l'authentification pour usage interne
@@ -19,6 +20,7 @@ export default function HomeImproved() {
   const logout = () => {};
   const [, setLocation] = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showFileManager, setShowFileManager] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "planning" | "in_progress" | "completed">("all");
   const [formData, setFormData] = useState({
@@ -147,13 +149,14 @@ export default function HomeImproved() {
               <h2 className="text-3xl font-bold text-slate-900">Mes Projets</h2>
               <p className="text-slate-600 mt-2">Gérez vos projets de pré-production vidéo</p>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nouveau Projet
-                </Button>
-              </DialogTrigger>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nouveau Projet
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Créer un nouveau projet</DialogTitle>
@@ -236,6 +239,15 @@ export default function HomeImproved() {
                 </div>
               </DialogContent>
             </Dialog>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => setShowFileManager(!showFileManager)}
+              className="w-full sm:w-auto"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Sauvegarder Projets
+            </Button>
           </div>
 
           {/* Message d'erreur */}
@@ -245,6 +257,13 @@ export default function HomeImproved() {
                 <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
                 <p className="text-red-700">{error}</p>
               </div>
+            </div>
+          )}
+
+          {/* Gestionnaire de sauvegarde */}
+          {showFileManager && (
+            <div className="mb-6">
+              <FileStorageManager />
             </div>
           )}
 
@@ -436,6 +455,7 @@ export default function HomeImproved() {
             })}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

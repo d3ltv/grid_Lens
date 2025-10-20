@@ -1,5 +1,6 @@
 // Service de stockage local qui remplace les appels API
 import { localStorageManager, ProjectData } from './localStorage';
+import { fileStorageService } from './fileStorage';
 
 export class LocalStorageService {
   // Gestion des projets
@@ -14,6 +15,14 @@ export class LocalStorageService {
     };
 
     await localStorageManager.saveProject(project);
+    
+    // Sauvegarder automatiquement en fichier
+    try {
+      await fileStorageService.saveProject(project);
+    } catch (error) {
+      console.warn('Erreur lors de la sauvegarde en fichier:', error);
+    }
+    
     return project;
   }
 
@@ -31,6 +40,14 @@ export class LocalStorageService {
     };
 
     await localStorageManager.saveProject(updatedProject);
+    
+    // Sauvegarder automatiquement en fichier
+    try {
+      await fileStorageService.saveProject(updatedProject);
+    } catch (error) {
+      console.warn('Erreur lors de la sauvegarde en fichier:', error);
+    }
+    
     return updatedProject;
   }
 
@@ -96,6 +113,18 @@ export class LocalStorageService {
 
   async importAllData(jsonData: string): Promise<void> {
     await localStorageManager.importData(jsonData);
+  }
+
+  // Sauvegarder tous les projets en fichiers
+  async saveAllProjectsToFiles(): Promise<void> {
+    try {
+      const projects = await this.getAllProjects();
+      await fileStorageService.saveAllProjects(projects);
+      console.log(`💾 ${projects.length} projets sauvegardés en fichiers`);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des projets:', error);
+      throw error;
+    }
   }
 
   // Utilitaires
