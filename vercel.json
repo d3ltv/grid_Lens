@@ -3,12 +3,6 @@
   "buildCommand": "pnpm vercel-build",
   "outputDirectory": "dist/public",
   "installCommand": "pnpm install",
-  "framework": null,
-  "functions": {
-    "server/_core/index.ts": {
-      "runtime": "@vercel/node@3.0.0"
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
@@ -18,9 +12,5 @@
       "src": "/(.*)",
       "dest": "/dist/public/$1"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "regions": ["iad1"]
+  ]
 }
