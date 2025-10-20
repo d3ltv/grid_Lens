@@ -6,12 +6,14 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import ProjectDetail from "./pages/ProjectDetail";
+import { LocalHome } from "./pages/LocalHome";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={LocalHome} />
+      <Route path="/web" component={Home} />
       <Route path="/project/:id" component={ProjectDetail} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
